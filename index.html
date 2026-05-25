@@ -184,7 +184,6 @@
             box-shadow: 0 10px 20px rgba(0,0,0,0.4);
         }
         
-        /* Fixed to show total image size automatically */
         .product img { 
             width: 100%; 
             height: auto; 
@@ -248,7 +247,6 @@
             color: #aaa;
         }
 
-        /* Uploaded photo full size display */
         #previewImg { 
             max-width: 100%; 
             height: auto;
@@ -320,7 +318,6 @@
             margin-bottom: 15px;
         }
         
-        /* Cart thumbnail adjustments */
         .cart-preview { 
             width: 150px; 
             height: auto;
@@ -472,6 +469,13 @@
             <button class="btn" onclick="addToCart('Blue Edition', 210, 'card4.jpg', 'prod-4')">Add to Cart</button>
         </div>
 
+        <div class="product" id="prod-5">
+            <img src="card5.jpg" alt="Light Blue Edition">
+            <h3>Light Blue Edition</h3>
+            <div class="price">210 EGP</div>
+            <button class="btn" onclick="addToCart('Light Blue Edition', 210, 'card5.jpg', 'prod-5')">Add to Cart</button>
+        </div>
+
     </div>
 </div>
 
@@ -518,29 +522,28 @@
         <h2 style="color: var(--gold); margin: 0;">Shipping Details</h2>
     </div>
 
-    <form id="orderForm" action="https://formsubmit.co/luxocard1234@gmail.com" method="POST">
-        <input type="hidden" name="Order_Summary" id="hiddenOrderData">
+    <form id="orderForm" onsubmit="submitToWhatsApp(event)">
         
         <label>Full Name</label>
-        <input type="text" name="Name" placeholder="Enter your full name" required>
+        <input type="text" id="custName" placeholder="Enter your full name" required>
 
         <label>Email Address</label>
-        <input type="email" name="Email" placeholder="example@mail.com" required>
+        <input type="email" id="custEmail" placeholder="example@mail.com" required>
 
         <label>Phone Number <i class="fab fa-whatsapp" style="color:#25D366; margin-left:5px;"></i></label>
         <div class="input-group">
             <span class="phone-prefix">+20</span>
-            <input type="tel" name="Phone" class="prefixed-input" placeholder="1XXXXXXXXX" required>
+            <input type="tel" id="custPhone" class="prefixed-input" placeholder="1XXXXXXXXX" required>
         </div>
 
         <label>Additional Phone Number (Optional)</label>
         <div class="input-group">
             <span class="phone-prefix">+20</span>
-            <input type="tel" name="Alt_Phone" class="prefixed-input" placeholder="1XXXXXXXXX">
+            <input type="tel" id="custAltPhone" class="prefixed-input" placeholder="1XXXXXXXXX">
         </div>
 
         <label>Governorate</label>
-        <select name="Governorate" required>
+        <select id="custGov" required>
             <option value="" disabled selected>Select your governorate</option>
             <option>Cairo</option><option>Giza</option><option>Alexandria</option><option>Dakahlia</option>
             <option>Red Sea</option><option>Beheira</option><option>Fayoum</option><option>Gharbiya</option>
@@ -552,23 +555,25 @@
         </select>
 
         <label>Shipping Address</label>
-        <input type="text" name="Address" placeholder="City, Street, Area" required>
+        <input type="text" id="custAddress" placeholder="City, Street, Area" required>
 
         <div class="row">
             <div>
                 <label>Floor Number</label>
-                <input type="text" name="Floor_No" placeholder="e.g. 3rd Floor" required>
+                <input type="text" id="custFloor" placeholder="e.g. 3rd Floor" required>
             </div>
             <div>
                 <label>Apartment Number</label>
-                <input type="text" name="Appt_No" placeholder="e.g. Appt 12" required>
+                <input type="text" id="custAppt" placeholder="e.g. Appt 12" required>
             </div>
         </div>
 
         <label>Card Customization Details</label>
-        <textarea name="Card_Data" rows="4" placeholder="Enter the exact name, job title, or specific information you want printed on your card(s)..."></textarea>
+        <textarea id="custCardData" rows="4" placeholder="Enter the exact name, job title, or specific information you want printed on your card(s)..."></textarea>
 
-        <button type="submit" class="btn btn-primary" style="margin-top:20px; font-size: 1.1rem; padding: 15px;">Place Order Securely</button>
+        <button type="submit" class="btn btn-primary" style="margin-top:20px; font-size: 1.1rem; padding: 15px;">
+            Complete Order via WhatsApp <i class="fab fa-whatsapp" style="font-size: 1.2rem; margin-left: 5px;"></i>
+        </button>
     </form>
 </div>
 
@@ -681,7 +686,6 @@
         if (cart.length === 0) {
             container.innerHTML = '<p style="text-align: center; color: #888; padding: 40px 0;">Your cart is currently empty.</p>';
             summarySection.style.display = 'none';
-            document.getElementById('hiddenOrderData').value = "";
             return;
         }
 
@@ -702,9 +706,6 @@
         });
         
         document.getElementById('cartTotal').innerText = `Total: ${total} EGP`;
-        
-        const orderSummaryList = cart.map(item => item.name).join(' | ');
-        document.getElementById('hiddenOrderData').value = `ITEMS: [${orderSummaryList}] - TOTAL AMOUNT: ${total} EGP`;
     }
 
     function showPage(id) {
@@ -721,6 +722,73 @@
         }
         
         window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // --- NEW WHATSAPP CHECKOUT LOGIC ---
+    function submitToWhatsApp(event) {
+        event.preventDefault(); // Prevents the page from refreshing
+
+        if (cart.length === 0) {
+            alert("Your cart is empty!");
+            return;
+        }
+
+        // 1. Gather all the input data
+        const name = document.getElementById('custName').value;
+        const email = document.getElementById('custEmail').value;
+        const phone = document.getElementById('custPhone').value;
+        const altPhone = document.getElementById('custAltPhone').value || "None provided";
+        const gov = document.getElementById('custGov').value;
+        const address = document.getElementById('custAddress').value;
+        const floor = document.getElementById('custFloor').value;
+        const appt = document.getElementById('custAppt').value;
+        const cardData = document.getElementById('custCardData').value || "No specific details provided";
+
+        // 2. Build the cart summary text
+        let cartDetails = "";
+        let total = 0;
+        cart.forEach((item, index) => {
+            cartDetails += `➤ ${item.name} - ${item.price} EGP\n`;
+            total += item.price;
+        });
+
+        // 3. Format the final WhatsApp message
+        const message = 
+`*NEW LUXO CARD ORDER* 🛒
+
+*👤 Customer Details:*
+Name: ${name}
+Email: ${email}
+Phone: +20${phone}
+Alt Phone: ${altPhone}
+
+*📍 Shipping Address:*
+Governorate: ${gov}
+Address: ${address}
+Floor: ${floor}, Appt: ${appt}
+
+*📋 Order Summary:*
+${cartDetails}
+*Total Amount: ${total} EGP*
+
+*✨ Customization Info:*
+${cardData}`;
+
+        // 4. Create the WhatsApp API link
+        // IMPORTANT: Replace the '201000000000' with your actual business WhatsApp number!
+        const businessPhone = "201000000000"; 
+        const encodedMessage = encodeURIComponent(message);
+        const whatsappUrl = `https://api.whatsapp.com/send?phone=${businessPhone}&text=${encodedMessage}`;
+
+        // 5. Open WhatsApp in a new tab
+        window.open(whatsappUrl, '_blank');
+
+        // Optional: Clear the cart after sending the order
+        cart = [];
+        updateCartCount();
+        document.getElementById('orderForm').reset();
+        showPage('shopPage');
+        showSuccessAlert('Order submitted via WhatsApp!');
     }
 </script>
 </body>
