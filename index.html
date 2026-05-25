@@ -522,7 +522,7 @@
         <h2 style="color: var(--gold); margin: 0;">Shipping Details</h2>
     </div>
 
-    <form id="orderForm" onsubmit="submitToWhatsApp(event)">
+    <form id="orderForm" onsubmit="sendEmailOrder(event)">
         
         <label>Full Name</label>
         <input type="text" id="custName" placeholder="Enter your full name" required>
@@ -571,8 +571,8 @@
         <label>Card Customization Details</label>
         <textarea id="custCardData" rows="4" placeholder="Enter the exact name, job title, or specific information you want printed on your card(s)..."></textarea>
 
-        <button type="submit" class="btn btn-primary" style="margin-top:20px; font-size: 1.1rem; padding: 15px;">
-            Complete Order via WhatsApp <i class="fab fa-whatsapp" style="font-size: 1.2rem; margin-left: 5px;"></i>
+        <button type="submit" id="submitOrderBtn" class="btn btn-primary" style="margin-top:20px; font-size: 1.1rem; padding: 15px;">
+            Place Order Securely
         </button>
     </form>
 </div>
@@ -585,7 +585,7 @@
         const alertBox = document.getElementById('customAlert');
         alertBox.innerText = msg;
         alertBox.classList.add('show');
-        setTimeout(() => alertBox.classList.remove('show'), 3000);
+        setTimeout(() => alertBox.classList.remove('show'), 4000);
     }
 
     function flyToCart(startElementId, imgSrc) {
@@ -724,71 +724,73 @@
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    // --- NEW WHATSAPP CHECKOUT LOGIC ---
-    function submitToWhatsApp(event) {
-        event.preventDefault(); // Prevents the page from refreshing
+    // --- FORM SUBMIT BACKGROUND EMAIL PROCESSING ---
+    function sendEmailOrder(event) {
+        event.preventDefault();
 
         if (cart.length === 0) {
             alert("Your cart is empty!");
             return;
         }
 
-        // 1. Gather all the input data
-        const name = document.getElementById('custName').value;
-        const email = document.getElementById('custEmail').value;
-        const phone = document.getElementById('custPhone').value;
-        const altPhone = document.getElementById('custAltPhone').value || "None provided";
-        const gov = document.getElementById('custGov').value;
-        const address = document.getElementById('custAddress').value;
-        const floor = document.getElementById('custFloor').value;
-        const appt = document.getElementById('custAppt').value;
-        const cardData = document.getElementById('custCardData').value || "No specific details provided";
+        const submitBtn = document.getElementById('submitOrderBtn');
+        submitBtn.innerText = "Processing Order...";
+        submitBtn.disabled = true;
 
-        // 2. Build the cart summary text
-        let cartDetails = "";
-        let total = 0;
-        cart.forEach((item, index) => {
-            cartDetails += `➤ ${item.name} - ${item.price} EGP\n`;
-            total += item.price;
+        // Compile ordered items list and final total
+        let itemsList = "";
+        let totalAmount = 0;
+        cart.forEach((item) => {
+            itemsList += `${item.name} (${item.price} EGP) | `;
+            totalAmount += item.price;
         });
 
-        // 3. Format the final WhatsApp message
-        const message = 
-`*NEW LUXO CARD ORDER* 🛒
+        // Assemble the form payload structure
+        const customerName = document.getElementById('custName').value;
+        const payload = {
+            Name: customerName,
+            Email: document.getElementById('custEmail').value,
+            Phone: '+20' + document.getElementById('custPhone').value,
+            Alt_Phone: document.getElementById('custAltPhone').value ? '+20' + document.getElementById('custAltPhone').value : 'None Provided',
+            Governorate: document.getElementById('custGov').value,
+            Address: document.getElementById('custAddress').value,
+            Floor_No: document.getElementById('custFloor').value,
+            Appt_No: document.getElementById('custAppt').value,
+            Card_Data: document.getElementById('custCardData').value || 'No specific details provided',
+            Order_Summary: `ITEMS: [ ${itemsList} ] - TOTAL AMOUNT: ${totalAmount} EGP`,
+            _subject: `New Luxo Card Order From: ${customerName}`
+        };
 
-*👤 Customer Details:*
-Name: ${name}
-Email: ${email}
-Phone: +20${phone}
-Alt Phone: ${altPhone}
-
-*📍 Shipping Address:*
-Governorate: ${gov}
-Address: ${address}
-Floor: ${floor}, Appt: ${appt}
-
-*📋 Order Summary:*
-${cartDetails}
-*Total Amount: ${total} EGP*
-
-*✨ Customization Info:*
-${cardData}`;
-
-        // 4. Create the WhatsApp API link
-        // IMPORTANT: Replace the '201000000000' with your actual business WhatsApp number!
-        const businessPhone = "201000000000"; 
-        const encodedMessage = encodeURIComponent(message);
-        const whatsappUrl = `https://api.whatsapp.com/send?phone=${businessPhone}&text=${encodedMessage}`;
-
-        // 5. Open WhatsApp in a new tab
-        window.open(whatsappUrl, '_blank');
-
-        // Optional: Clear the cart after sending the order
-        cart = [];
-        updateCartCount();
-        document.getElementById('orderForm').reset();
-        showPage('shopPage');
-        showSuccessAlert('Order submitted via WhatsApp!');
+        // Send via AJAX to FormSubmit endpoint targetting your email
+        fetch("https://formsubmit.co/ajax/luxocard1234@gmail.com", {
+            method: "POST",
+            headers: { 
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success === "true" || data.success === true) {
+                // Clear state on successful send
+                cart = [];
+                updateCartCount();
+                document.getElementById('orderForm').reset();
+                showPage('shopPage');
+                showSuccessAlert('Order placed successfully! Check your email inbox.');
+            } else {
+                alert("Something went wrong with the email provider. Please try again.");
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert("Connection error. Could not place order. Please check your internet connection.");
+        })
+        .finally(() => {
+            submitBtn.innerText = "Place Order Securely";
+            submitBtn.disabled = false;
+        });
     }
 </script>
 </body>
